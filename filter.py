@@ -9,12 +9,12 @@ from scipy import interpolate
 from scipy import integrate
 import matplotlib.pylab as pylab
 
-def filterSpec(d,dxMin,Lf,shape="Gaussian",X=np.pi,N=-1):
+def filterSpec(dxMin,Lf,d=2,shape="Gaussian",X=np.pi,N=-1):
     """
     Inputs: 
-    d is the dimension of the grid where the filter will be applied 
     dxMin is the smallest grid spacing - should have same units as Lf
     Lf is the filter scale, which has different meaning depending on filter shape
+    d is the dimension of the grid where the filter will be applied 
     shape can currently be one of two things:
         Gaussian: The target filter has kernel ~ e^{-.5*|x/Lf|^2}
         Taper: k>=2*pi/Lf are zeroed out, k<=2*pi/(X*Lf) are left as-is, smooth transition in between.
@@ -92,7 +92,6 @@ def filterSpec(d,dxMin,Lf,shape="Gaussian",X=np.pi,N=-1):
     plt.plot(k,np.polynomial.chebyshev.chebval(x,p),'m',label='approximation',linewidth=4)
     #plt.xticks(np.arange(5), ('0', r'$1/\Delta x$', r'$2/\Delta x$',r'$3/\Delta x$', r'$4/\Delta x$'))
     if shape=="Gaussian":
-        plt.axvline(1/Lf,color='k',linewidth=2)
         plt.axvline(2*np.pi/(np.sqrt(12)*Lf),color='k',linewidth=2)
     else:
         plt.axvline(2*np.pi/(X*Lf),color='k',linewidth=2)
