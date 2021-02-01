@@ -1,5 +1,5 @@
 """
-Functions for filtering 2D model output to coarser resolution
+Functions for filtering gridded data to coarser resolution
 This puts together the code snippets from Ian's CPT-Snippets repo:
 https://github.com/iangrooms/CPT-Snippets 
 """
@@ -9,16 +9,16 @@ from scipy import interpolate
 from scipy import integrate
 import matplotlib.pylab as pylab
 
-def filterSpec(N,dxMin,Lf,shape="Gaussian",X=np.pi):
+def filterSpec(d,dxMin,Lf,shape="Gaussian",X=np.pi,N=-1):
     """
     Inputs: 
-    N is the number of total steps in the filter
+    d is the dimension of the grid where the filter will be applied 
     dxMin is the smallest grid spacing - should have same units as Lf
     Lf is the filter scale, which has different meaning depending on filter shape
     shape can currently be one of two things:
-        Gaussian: The target filter has kernel ~ e^{-|x/Lf|^2}
-        Taper: The target filter has target grid scale Lf. Smaller scales are zeroed out. 
-               Scales larger than pi*Lf/2 are left as-is. In between is a smooth transition.
+        Gaussian: The target filter has kernel ~ e^{-.5*|x/Lf|^2}
+        Taper: k>=2*pi/Lf are zeroed out, k<=2*pi/(X*Lf) are left as-is, smooth transition in between.
+        The correspondence is Gaussian-Lf ~ Taper-Lf/sqrt{12}.
     X is the width of the transition region in the "Taper" filter; per the CPT Bar&Prime doc the default is pi.
     Note that the above are properties of the *target* filter, which are not the same as the actual filter.
     
@@ -28,9 +28,21 @@ def filterSpec(N,dxMin,Lf,shape="Gaussian",X=np.pi):
     NB is the number of Biharmonic steps
     sB is s_i for the Biharmonic steps; units of sB are one over the units of dxMin and Lf, squared
     """
+    if N == -1:
+        print("Using default N. If d>2 or X is not pi then results might not be accurate.")
+        if shape == "Gaussian":
+            if d == 1:
+                N = np.ceil(1.3*np.sqrt(12)*Lf/dxMin).astype(int)
+            else: # d==2
+                N = np.ceil(1.8*np.sqrt(12)*Lf/dxMin).astype(int)
+        else: # shape=="Taper"
+            if d == 1:
+                N = np.ceil(4.5*Lf/dxMin).astype(int)
+            else: # d==2
+                N = np.ceil(6.4*Lf/dxMin).astype(int)
     # Code only works for N>2
     if N <= 2:
-        print("Code requires N>2")
+        print("Code requires N>2. If you're using default N, then Lf is too small compared to dxMin")
         return 
     # First set up the mass matrix for the Galerkin basis from Shen (SISC95)
     M = (np.pi/2)*(2*np.eye(N-1) - np.diag(np.ones(N-3),2) - np.diag(np.ones(N-3),-2))
@@ -38,14 +50,14 @@ def filterSpec(N,dxMin,Lf,shape="Gaussian",X=np.pi):
     # The range of wavenumbers is 0<=|k|<=sqrt(2)*pi/dxMin. Nyquist here is for a 2D grid. 
     # Per the notes, define s=k^2.
     # Need to rescale to t in [-1,1]: t = (2/sMax)*s -1; s = sMax*(t+1)/2
-    sMax = 2*(np.pi/dxMin)**2
+    sMax = d*(np.pi/dxMin)**2
     # Set up target filter
     if shape == "Gaussian":
         F = lambda t: np.exp(-(sMax*(t+1)/2)*(Lf/2)**2)
     elif shape == "Taper":
-        F = interpolate.PchipInterpolator(np.array([-1,(2/sMax)*(np.pi/(X*Lf))**2 -1,(2/sMax)*(np.pi/Lf)**2 -1,2]),np.array([1,1,0,0]))
+        F = interpolate.PchipInterpolator(np.array([-1,(2/sMax)*(2*np.pi/(X*Lf))**2 -1,(2/sMax)*(2*np.pi/Lf)**2 -1,2]),np.array([1,1,0,0]))
     else:
-        print("Please input a valid shape")
+        print("Please input a valid shape: Gaussian or Taper")
         return
     # Compute inner products of Galerkin basis with target
     b = np.zeros(N-1)
@@ -79,8 +91,12 @@ def filterSpec(N,dxMin,Lf,shape="Gaussian",X=np.pi):
     plt.plot(k,F(x),'g',label='target filter',linewidth=4)
     plt.plot(k,np.polynomial.chebyshev.chebval(x,p),'m',label='approximation',linewidth=4)
     #plt.xticks(np.arange(5), ('0', r'$1/\Delta x$', r'$2/\Delta x$',r'$3/\Delta x$', r'$4/\Delta x$'))
-    plt.axvline(1/Lf,color='k',linewidth=2)
-    plt.axvline(np.pi/Lf,color='k',linewidth=2)
+    if shape=="Gaussian":
+        plt.axvline(1/Lf,color='k',linewidth=2)
+        plt.axvline(2*np.pi/(np.sqrt(12)*Lf),color='k',linewidth=2)
+    else:
+        plt.axvline(2*np.pi/(X*Lf),color='k',linewidth=2)
+        plt.axvline(2*np.pi/Lf,color='k',linewidth=2)
     #plt.text(1/Lf, 1.15, r'$\frac{1}{2}$',fontsize=20)
     #plt.text(np.pi/Lf, 1.15, r'$\frac{\pi}{2}$',fontsize=20)
     left, right = plt.xlim()
