@@ -30,10 +30,16 @@ def filterSpec(dxMin,Lf,d=2,shape="Gaussian",X=np.pi,N=-1):
     """
     if N == -1:
         print("Using default N. If d>2 or X is not pi then results might not be accurate.")
-        if d == 1:
-            N = np.ceil(4.5*Lf/dxMin).astype(int)
-        else: # d==2
-            N = np.ceil(6.4*Lf/dxMin).astype(int)
+        if shape == "Gaussian":
+            if d == 1:
+                N = np.ceil(1.3*Lf/dxMin).astype(int)
+            else: # d==2
+                N = np.ceil(1.8*Lf/dxMin).astype(int)
+        else: # Taper
+            if d == 1:
+                N = np.ceil(4.5*Lf/dxMin).astype(int)
+            else: # d==2
+                N = np.ceil(6.4*Lf/dxMin).astype(int)
     # Code only works for N>2
     if N <= 2:
         print("Code requires N>2. If you're using default N, then Lf is too small compared to dxMin")
