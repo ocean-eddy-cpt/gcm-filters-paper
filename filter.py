@@ -16,9 +16,9 @@ def filterSpec(dxMin,Lf,d=2,shape="Gaussian",X=np.pi,N=-1):
     Lf is the filter scale, which has different meaning depending on filter shape
     d is the dimension of the grid where the filter will be applied 
     shape can currently be one of two things:
-        Gaussian: The target filter has kernel ~ e^{-.5*|x/Lf|^2}
+        Gaussian: The target filter has kernel ~ e^{-6*|x/Lf|^2}
         Taper: k>=2*pi/Lf are zeroed out, k<=2*pi/(X*Lf) are left as-is, smooth transition in between.
-        The correspondence is Gaussian-Lf ~ Taper-Lf/sqrt{12}.
+        The std dev of the Gaussian is Lf/sqrt{12}.
     X is the width of the transition region in the "Taper" filter; per the CPT Bar&Prime doc the default is pi.
     Note that the above are properties of the *target* filter, which are not the same as the actual filter.
     
@@ -30,16 +30,10 @@ def filterSpec(dxMin,Lf,d=2,shape="Gaussian",X=np.pi,N=-1):
     """
     if N == -1:
         print("Using default N. If d>2 or X is not pi then results might not be accurate.")
-        if shape == "Gaussian":
-            if d == 1:
-                N = np.ceil(1.3*np.sqrt(12)*Lf/dxMin).astype(int)
-            else: # d==2
-                N = np.ceil(1.8*np.sqrt(12)*Lf/dxMin).astype(int)
-        else: # shape=="Taper"
-            if d == 1:
-                N = np.ceil(4.5*Lf/dxMin).astype(int)
-            else: # d==2
-                N = np.ceil(6.4*Lf/dxMin).astype(int)
+        if d == 1:
+            N = np.ceil(4.5*Lf/dxMin).astype(int)
+        else: # d==2
+            N = np.ceil(6.4*Lf/dxMin).astype(int)
     # Code only works for N>2
     if N <= 2:
         print("Code requires N>2. If you're using default N, then Lf is too small compared to dxMin")
@@ -53,7 +47,7 @@ def filterSpec(dxMin,Lf,d=2,shape="Gaussian",X=np.pi,N=-1):
     sMax = d*(np.pi/dxMin)**2
     # Set up target filter
     if shape == "Gaussian":
-        F = lambda t: np.exp(-(sMax*(t+1)/2)*(Lf/2)**2)
+        F = lambda t: np.exp(-(sMax*(t+1)/2)*Lf**2/24)
     elif shape == "Taper":
         F = interpolate.PchipInterpolator(np.array([-1,(2/sMax)*(2*np.pi/(X*Lf))**2 -1,(2/sMax)*(2*np.pi/Lf)**2 -1,2]),np.array([1,1,0,0]))
     else:
