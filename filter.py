@@ -55,7 +55,8 @@ def filterSpec(dxMin,Lf,d=2,shape="Gaussian",X=np.pi,N=-1):
     if shape == "Gaussian":
         F = lambda t: np.exp(-(sMax*(t+1)/2)*Lf**2/24)
     elif shape == "Taper":
-        F = interpolate.PchipInterpolator(np.array([-1,(2/sMax)*(2*np.pi/(X*Lf))**2 -1,(2/sMax)*(2*np.pi/Lf)**2 -1,2]),np.array([1,1,0,0]))
+        Fk = interpolate.PchipInterpolator(np.array([0, 2*np.pi/(X*Lf), 2*np.pi/Lf, 2*np.sqrt(sMax)]),np.array([1,1,0,0]))
+        F = lambda t: Fk(np.sqrt((t+1)*(sMax/2)))
     else:
         print("Please input a valid shape: Gaussian or Taper")
         return
